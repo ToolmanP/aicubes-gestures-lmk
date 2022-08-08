@@ -1,0 +1,3 @@
+[submodule "10jqka-demo"]
+	path = 10jqka-demo
+	url = git@github.com:10jqka-aicubes/gesture-lmk-rec.git
