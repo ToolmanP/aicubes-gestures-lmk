@@ -1,28 +1,34 @@
-from .transform import normalize
 from .const import *
+from .transform import normalize
 
 import numpy as np
 import cv2, os
 
 from torchvision import transforms
+from torchvision.transforms.functional import gaussian_blur
 from torch.utils.data import Dataset
 import torch
 
 
 class FingerDataset(Dataset):
 
-    def __init__(self, file_list, path):
+    def __init__(self,
+                file_list:str,
+                path:str,
+                ):
         
         self.path = path
+        self.shape = INSHAPE
         self.transforms = transforms.Compose(
             [transforms.ToTensor(),
-             transforms.Resize(SIZE)
+             transforms.Resize(INSHAPE)
             ]
         )
+
         with open(file_list, 'r') as f:
             self.lines = f.readlines()
-
-    def __getitem__(self, index):
+    
+    def __getitem__(self, index:int) -> torch.Tensor:
 
         img:torch.Tensor
         heatmap:torch.Tensor
@@ -41,9 +47,15 @@ class FingerDataset(Dataset):
 
         category = int(line[1])
         
-        landmark = landmark.reshape([2,-1])
+        heatmap = torch.zeros([NLANDMARKS,*INSHAPE])
         
-        return (img, landmark, category)
+        for ch,mark in enumerate(landmark.reshape([-1,2])):
+            x,y = mark
+            heatmap[ch,int(x),int(y)]=1
+        
+        heatmap = gaussian_blur(heatmap,7,1.5)
+        
+        return (img, landmark, heatmap, category)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.lines)
