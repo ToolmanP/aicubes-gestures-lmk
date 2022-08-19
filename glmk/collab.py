@@ -78,11 +78,11 @@ class CollabNetwork(nn.Module):
             nn.ReLU(True)
         )
 
-    def forward(self, res: torch.Tensor, prev_gest:torch.Tensor) -> torch.Tensor:
+    def forward(self, res: torch.Tensor, prev_gest:torch.Tensor, prev_pfld:torch.Tensor, prev_shgn:torch.Tensor) -> torch.Tensor:
         prev_gest = self.conv_gest(prev_gest)
-        heatmaps,shgn_feature = self.shgn(res + prev_gest)
-        landmarks,pfld_feature = self.pfld(res + prev_gest)
+        heatmaps,shgn_feature = self.shgn(res + prev_gest + prev_pfld)
+        landmarks,pfld_feature = self.pfld(res + prev_gest + prev_shgn)
 
         joint_feature = self.conv_shgn(shgn_feature)+self.conv_pfld(pfld_feature)
-        category,gesture_feature= self.classifier(joint_feature+res)
-        return heatmaps,landmarks,category,gesture_feature
+        category,gest_feature= self.classifier(joint_feature+res)
+        return heatmaps,landmarks,category,gest_feature,pfld_feature,shgn_feature

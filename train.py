@@ -11,9 +11,10 @@ import torch
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main(args):
+    os.makedirs('./models',exist_ok=True)
     model = resnet50(weights=ResNet50_Weights.DEFAULT)
     extractor = create_feature_extractor(model,[NODE]).to(device)
-    
+
     for parameters in extractor.parameters():
         parameters.requires_grad = False
 
@@ -22,7 +23,7 @@ def main(args):
     network = CollabNetwork(shgn_levels=2,shgn_iterations=2).to(device)
     criterion = FingerLoss()
     optimizer = torch.optim.Adam(params=network.parameters(),lr=args.lr,weight_decay=args.weight_decay)
-
+    print("Training started.")
     for epoch in range(1,args.epoch+1):
         for idx, data in enumerate(dataloader):
             img,landmarks_gt,heatmap_gt,gesture_index = data
@@ -30,18 +31,19 @@ def main(args):
             landmarks = landmarks.to(device)
             heatmap = heatmap.to(device)
             resnet_features = extractor(img)[NODE]
-            prev_gest = torch.zeros(resnet_features.shape).to(device)
+            prev_gest = prev_pfld = prev_shgn = 0 
             gesture_gt = torch.zeros(3).to(device)
             gesture_gt[:,gesture_index]=1
+            
             for _ in range(args.iterations):
                 optimizer.zero_grad()
-                landmarks,heatmaps,gesture,gesture_feature = network(resnet_features,prev_gest)
-                prev_gest = gesture_feature
+                landmarks,heatmaps,gesture,prev_gest,prev_pfld,prev_shgn = network(resnet_features,prev_gest,prev_pfld,prev_shgn)
                 loss = criterion(gesture, landmarks, heatmaps, gesture_gt, landmarks_gt, heatmap_gt)
                 loss.backward()
                 optimizer.step()
+        torch.save(network.state_dict(),'./models/model.pth.tar')        
         print(f"Epoch #{epoch} Batch #{idx} Loss:{loss.item()}")
-                
+    print("Training ended.")
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-w','--workers',help='amount of workers fetching dataset',dest='workers',type=int,default=8)
