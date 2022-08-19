@@ -6,16 +6,17 @@ class ConvBlock(nn.Module):
     def __init__(self,in_channels:int,out_channels:int) -> None:
         super().__init__()
         
+        middle_channels = int(out_channels/2)
         self.conv = nn.Sequential(
             nn.BatchNorm2d(in_channels),
             nn.ReLU(True),
-            nn.Conv2d(in_channels,out_channels/2,kernel_size=1),
-            nn.BatchNorm2d(out_channels/2),
+            nn.Conv2d(in_channels,middle_channels,kernel_size=1),
+            nn.BatchNorm2d(middle_channels),
             nn.ReLU(True),
-            nn.Conv2d(out_channels/2,out_channels/2,kernel_size=3,stride=1,padding=1),
-            nn.BatchNorm2d(out_channels/2),
+            nn.Conv2d(middle_channels,middle_channels,kernel_size=3,stride=1,padding=1),
+            nn.BatchNorm2d(middle_channels),
             nn.ReLU(True),
-            nn.Conv2d(out_channels/2,out_channels,1)
+            nn.Conv2d(middle_channels,out_channels,kernel_size=1)
         )
 
     def forward(self,x:torch.Tensor):
@@ -62,7 +63,7 @@ class HourGlass(nn.Module):
             ))
             self.ups.append(nn.Sequential(
                 ResidualBlock(in_channels,out_channels),
-                nn.UpsamplingBilinear2d(2)
+                nn.UpsamplingBilinear2d(scale_factor=2)
             ))
         
         self.middle = ResidualBlock(in_channels,out_channels)
@@ -73,10 +74,11 @@ class HourGlass(nn.Module):
         for skip,down in zip(self.skips,self.downs):
             skip_history.append(skip(x))
             x = down(x)
-        
+            
         x = self.middle(x)
         
         for up,skipx in zip(self.ups,skip_history[::-1]):
-            x = up(x) + skipx
+            x = up(x)
+            x = x + skipx
         
         return x

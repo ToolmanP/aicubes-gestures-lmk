@@ -9,17 +9,18 @@ class HGN(nn.Module):
                 in_channels:int,
                 out_channels:int,
                 levels:int) -> None:
+        
         super().__init__()
         
-        self.hg = HourGlass(in_channels,in_channels,levels)
+        self.hg = HourGlass(in_channels,in_channels,levels=levels)
 
         self.conv = nn.Sequential(
             ResidualBlock(in_channels,in_channels),
-            nn.Conv2d(in_channels,in_channels),
+            nn.Conv2d(in_channels,in_channels,kernel_size=1),
             nn.BatchNorm2d(in_channels),
             nn.ReLU(True)
         )
-        self.out = nn.Conv2d(in_channels,out_channels)
+        self.out = nn.Conv2d(in_channels,out_channels,kernel_size=1)
         self.skip1 = SkipBlock(in_channels,in_channels)
         self.skip2 = SkipBlock(out_channels,in_channels)
 
@@ -37,11 +38,11 @@ class SHGN(nn.Module):
                 in_channels:int,
                 out_channels:int,
                 levels:int,
-                recursions:int) -> None:
+                iterations:int) -> None:
 
         super().__init__()
         self.hgns = nn.ModuleList()
-        for _ in range(recursions):
+        for _ in range(iterations):
             self.hgns.append(HGN(in_channels,out_channels,levels))
     
     def forward(self,features:torch.Tensor):
@@ -49,7 +50,4 @@ class SHGN(nn.Module):
         for hgn in self.hgns:
             out,features = hgn(features)
             outs.append(out)
-        return outs
-
-class SHGNClassifier(nn.Module):
-    pass
+        return outs,features
