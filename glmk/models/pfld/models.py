@@ -57,7 +57,7 @@ class PFLD(nn.Module):
             nn.BatchNorm2d(in_channels),
             nn.ReLU(True),
             nn.UpsamplingNearest2d(scale_factor=2),
-            nn.Conv2d(in_channels,int(in_channels/2),kernel_size=3,padding=1),
+            nn.Conv2d(in_channels,in_channels,kernel_size=3,padding=1),
             nn.BatchNorm2d(in_channels),
             nn.ReLU(True),
         )

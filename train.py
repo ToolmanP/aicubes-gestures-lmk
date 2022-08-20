@@ -19,31 +19,31 @@ def main(args):
         parameters.requires_grad = False
 
     dataset = FingerDataset('./data/train/train_data.txt','./data/train')
-    dataloader = DataLoader(dataset=dataset,batch_size=args.batch_size,shuffle=True,workers=args.workers)
+    dataloader = DataLoader(dataset=dataset,batch_size=args.batch_size,shuffle=True,num_workers=args.workers)
     network = CollabNetwork(shgn_levels=2,shgn_iterations=2).to(device)
     criterion = FingerLoss()
     optimizer = torch.optim.Adam(params=network.parameters(),lr=args.lr,weight_decay=args.weight_decay)
     print("Training started.")
     for epoch in range(1,args.epoch+1):
         for idx, data in enumerate(dataloader):
-            img,landmarks_gt,heatmap_gt,gesture_index = data
+            img,landmarks_gt,heatmap_gt,gesture_gt = data
             img = img.to(device)
-            landmarks = landmarks.to(device)
-            heatmap = heatmap.to(device)
+            landmarks_gt = landmarks_gt.to(device)
+            heatmap_gt = heatmap_gt.to(device)
+            gesture_gt = gesture_gt.to(device)
+
             resnet_features = extractor(img)[NODE]
-            prev_gest = prev_pfld = prev_shgn = 0 
-            gesture_gt = torch.zeros(3).to(device)
-            gesture_gt[:,gesture_index]=1
-            
+            prev_gest = prev_pfld = prev_shgn = 0
             for _ in range(args.iterations):
                 optimizer.zero_grad()
-                landmarks,heatmaps,gesture,prev_gest,prev_pfld,prev_shgn = network(resnet_features,prev_gest,prev_pfld,prev_shgn)
+                gesture,landmarks,heatmaps,prev_gest,prev_pfld,prev_shgn = network(resnet_features,prev_gest,prev_pfld,prev_shgn)
                 loss = criterion(gesture, landmarks, heatmaps, gesture_gt, landmarks_gt, heatmap_gt)
                 loss.backward()
                 optimizer.step()
         torch.save(network.state_dict(),'./models/model.pth.tar')        
         print(f"Epoch #{epoch} Batch #{idx} Loss:{loss.item()}")
     print("Training ended.")
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-w','--workers',help='amount of workers fetching dataset',dest='workers',type=int,default=8)

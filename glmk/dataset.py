@@ -5,7 +5,7 @@ import numpy as np
 import cv2, os
 
 from torchvision import transforms
-from torchvision.transforms.functional import gaussian_blur
+from torchvision.transforms.functional import gaussian_blur,resize
 from torch.utils.data import Dataset
 import torch
 
@@ -45,8 +45,10 @@ class FingerDataset(Dataset):
 
         landmark = np.asarray(line[6:90], dtype=np.float32)
 
-        category = int(line[1])
-        
+        gesture_idx = int(line[1])
+        gesture = torch.zeros(3)
+        gesture[gesture_idx] = 1
+
         heatmap = torch.zeros([NLANDMARKS,*INSHAPE])
         
         for ch,mark in enumerate(landmark.reshape([-1,2])):
@@ -54,8 +56,9 @@ class FingerDataset(Dataset):
             heatmap[ch,int(x),int(y)]=1
         
         heatmap = gaussian_blur(heatmap,7,1.5)
+        heatmap = resize(heatmap,[24,24])
         
-        return (img, landmark, heatmap, category)
+        return (img, landmark, heatmap, gesture)
 
     def __len__(self) -> int:
         return len(self.lines)
